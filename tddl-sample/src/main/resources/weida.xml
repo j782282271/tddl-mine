@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Application context definition for PetClinic on JDBC. -->
+<beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns="http://www.springframework.org/schema/beans"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd"
+       default-autowire="byName">
+    <bean id="vtabroot" class="com.taobao.tddl.interact.rule.VirtualTableRoot"
+          init-method="init">
+        <property name="defaultDbIndex" value="SPU_CENTER_GROUP"/>
+        <property name="dbType" value="MYSQL"></property>
+        <property name="tableRules">
+            <map>
+                <entry key="ali_barcode" value-ref="ali_mysql_barcode"/>
+            </map>
+        </property>
+    </bean>
+
+    <bean id="ali_mysql_barcode" class="com.taobao.tddl.interact.rule.TableRule">
+        <property name="dbNamePattern" value="SPU_CENTER_GROUP"/>
+        <property name="tbNamePattern" value="barcode_{0000}"></property>
+        <property name="tbRuleArray">
+            <value>(#barcode,1,32#.hashCode()).abs() % 32</value>
+        </property>
+        <property name="allowFullTableScan" value="true"/>
+    </bean>
+
+
+</beans>
