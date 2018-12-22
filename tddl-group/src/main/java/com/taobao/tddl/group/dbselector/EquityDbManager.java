@@ -174,7 +174,7 @@ public class EquityDbManager extends AbstractDBSelector {
                 if (isFatal) {
                     dsHolder.isNotAvailable = true;
                 }
-                if (!isFatal || failedDataSources == null) {
+                if (!isFatal || failedDataSources == null) {//不需要重试，会传参failedDataSources=null
                     // throw e; //如果不是数据库不可用异常，或者不要求重试，直接抛出
                     break;
                 }

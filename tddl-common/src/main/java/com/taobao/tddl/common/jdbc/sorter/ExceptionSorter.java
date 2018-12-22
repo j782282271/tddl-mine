@@ -42,7 +42,7 @@ public interface ExceptionSorter {
 
     /**
      * Evaluates a <code>java.sql.SQLException</code> to determine if
-     * the error was fatal
+     * the error was fatal，数据库不可用返回true,sql为错误返回false
      *
      * @param e the <code>java.sql.SQLException</code>
      * @return whether or not the exception is vatal.

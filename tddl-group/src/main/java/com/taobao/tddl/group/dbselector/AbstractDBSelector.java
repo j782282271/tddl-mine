@@ -77,7 +77,8 @@ public abstract class AbstractDBSelector implements DBSelector {
 
     /**
      * 在一个数据库上执行，有单线程试读
-     *
+     * 在指定datasource上执行sql,成功执行tryOnDataSource则返回结果，失败则将异常加入list,执行onSQLException
+     * 如果onSQLException中抛出异常相当于不再重试，参数times无用，其中无重试执行tryOnDataSource逻辑
      * @param <T>
      * @param dsHolder
      * @param failedDataSources
@@ -185,6 +186,10 @@ public abstract class AbstractDBSelector implements DBSelector {
         }
     }
 
+    /**
+     * 带重试的执行，如果指定了datasource，则走tryOnDataSourceHolderWithIndex（失败不重试）
+     * 没指定datasource，则执行tryExecuteInternal，tryExecuteInternal中含有重试逻辑
+     * */
     public <T> T tryExecute(Map<DataSource, SQLException> failedDataSources, DataSourceTryer<T> tryer, int times,
                             Object... args) throws SQLException {
         // dataSourceIndex放在args最后一个.以后改动要注意
@@ -328,6 +333,9 @@ public abstract class AbstractDBSelector implements DBSelector {
         return this.tryExecuteInternal(new LinkedHashMap<DataSource, SQLException>(0), tryer, times, args);
     }
 
+    /**
+     * 带重试的执行
+     * */
     protected abstract <T> T tryExecuteInternal(Map<DataSource, SQLException> failedDataSources,
                                                 DataSourceTryer<T> tryer, int times, Object... args)
             throws SQLException;

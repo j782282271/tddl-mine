@@ -64,8 +64,8 @@ public class TGroupConnection implements IConnection {
      * 下层connection的持有，getter/setter包权限
      * ======================================================================
      */
-    private Connection rBaseConnection;
-    private Connection wBaseConnection;
+    private Connection rBaseConnection;//仅仅用于一条读sql且autocommit=true
+    private Connection wBaseConnection;//autocommit=false全用它，write也用他
     // private String rBaseDsKey; // rBaseConnection对应的数据源key
     // private String wBaseDsKey; // wBaseConnection对应的数据源key
     // private int rBaseDataSourceIndex = -2; // rBaseConnection对应的数据源Index
@@ -124,7 +124,12 @@ public class TGroupConnection implements IConnection {
     }
 
     /**
-     * 获取事务中的上一个操作的链接
+     * 获取事务中的上一个操作的链接，
+     * start 事物
+     *    sql a，执行此sql时候创建新的conn，调用createNewConnection
+     *    sql b，执行此sql时候使用getBaseConnection，获取sql a创建的conn。
+     * commit
+     * sql a/b要保证使用同一个数据源ds，同一个连接conn
      */
     Connection getBaseConnection(String sql, boolean isRead) throws SQLException {
         GroupIndex dataSourceIndex = DEFAULT_GROUPINDEX;
@@ -143,7 +148,7 @@ public class TGroupConnection implements IConnection {
             if (log.isDebugEnabled()) {
                 log.debug("dataSourceIndex=" + dataSourceIndex);
             }
-            // 在事务状态下，设置不同的数据源索引会导致异常。
+            // 在事务状态下（即isAutoCommit==false,即外部控制有多条sql在同一事物中），设置不同的数据源索引会导致异常。
             if (!isAutoCommit) {
                 if (wBaseDsWrapper != null && !wBaseDsWrapper.isMatchDataSourceIndex(dataSourceIndex.index)) {
                     throw new SQLException("Transaction in another dataSourceIndex: " + dataSourceIndex);
@@ -162,11 +167,11 @@ public class TGroupConnection implements IConnection {
         }
 
         // 为了保证事务正确关闭，在事务状态下只会取回写连接
-        if (isRead && isAutoCommit) {
+        if (isRead && isAutoCommit) {//一条只读sql，执行完毕立即提交
             // 只要有写连接，并且对应的库可读，则复用。否则返回读连接
             return wBaseConnection != null && wBaseDsWrapper.hasReadWeight() ? wBaseConnection : rBaseConnection;
             // 先写后读，重用写连接读后，rBaseConnection仍然是null
-        } else {
+        } else {//外部控制commit
             if (wBaseConnection != null) {
                 this.tGroupDataSource.setWriteTarget(wBaseDsWrapper);
                 return wBaseConnection;
@@ -206,7 +211,14 @@ public class TGroupConnection implements IConnection {
             }
         }
 
-        // 为了保证事务正确关闭，在事务状态下只设置写连接
+        //https://blog.csdn.net/aitangyong/article/details/50481161
+        //如果设置isAutoCommit==true说明本次只执行一条sql，不管读写，执行完则commit
+        //如果设置isAutoCommit==false说明本次要执行多条sql，由外部控制什么时候commit
+        // 为了保证事务正确关闭，在事务状态下（isAutoCommit=false）只设置写连接不管读写，执行完则commit
+        //isAutoCommit==false（（isRead && isAutoCommit）==false）说明是外部控制commit,这时候需要执行多条sql，
+        //因为当前sql为读，后续同一事物中的sql可能为写，所以需要保证在可写库上执行，否则当前在读库，后续同一事物的写操作在写库，无法保证事物
+        //isAutoCommit==true时isRead==true说明此时只是一条读sql，可以在只读库上执行，只有这种情况才可以使用只读库
+        //isAutoCommit==true时isRead==false说明此时只是一条写sql，必须在写库上执行
         setBaseConnection(conn, dsw, isRead && isAutoCommit);
 
         // 只在写连接上调用 setAutoCommit, 与 TGroupConnection#setAutoCommit 的代码保持一致

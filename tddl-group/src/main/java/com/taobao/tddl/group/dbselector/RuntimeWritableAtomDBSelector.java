@@ -16,9 +16,9 @@ import java.util.Map;
  * =====================
  * d0 d1 d2
  * (1) rw r r
- * (2) na r r
- * (3) na rw r
- * (4) r rw r
+ * (2) na r r  设置d0为不允许读写，即摘掉
+ * (3) na rw r  设置d1为主，允许读写
+ * (4) r rw r   设置d0允许读
  * =====================
  * (1)是切换前正常的状态快照，(4)是切换完成后的状态快照，(2)、(3)是中间过程的状态快照。
  * 如果业务系统在状态(1)、(3)、(4)下要求进行更新操作，则更新操作被允许，因为在这三个状态中都能找到一个含有"w"的db，
@@ -45,6 +45,7 @@ public class RuntimeWritableAtomDBSelector extends AbstractDBSelector {
 
     public DataSource select() {
         for (Map.Entry<String, DataSourceWrapper> e : dataSourceWrapperMap.entrySet()) {
+            //只取可以写的ds
             if (GroupConfigManager.isDataSourceAvailable(e.getValue(), false)) {
                 return e.getValue();
             }
