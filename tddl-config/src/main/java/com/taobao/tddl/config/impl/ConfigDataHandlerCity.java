@@ -4,6 +4,12 @@ import com.taobao.tddl.config.ConfigDataHandlerFactory;
 
 import java.util.Map;
 
+
+/**
+ * ConfigDataHandlerCity获取ConfigDataHandlerFactory
+ * ConfigDataHandlerFactory获取ConfigDataHandler
+ * ConfigDataHandler获取配置
+ * */
 public class ConfigDataHandlerCity {
 
     public static ConfigDataHandlerFactory getFactory(String appName, String unitName) {

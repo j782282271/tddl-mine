@@ -35,6 +35,10 @@ public class PreheatDataHandler extends UnitConfigDataHandler {
 
     @Override
     public String getData(long timeout, String strategy) {
+//        ConfigHolderFactory获取ConfigDataHolder，ConfigDataHolder在内存中缓存了配置
+//        0.1）MatrixConfigHolder中才会向ConfigHolderFactory放入ConfigDataHolder
+//        0.2）仅仅PreheatDataHandler用到了ConfigDataHolder，即从缓存中获取配置
+//        根据0.1）、0.2）即只有Matrix相关配置才会用put进入缓存，然后在PreheatDataHandler中使用缓存
         if (ConfigHolderFactory.isInit(delagate.getAppName())) {
             String result = ConfigHolderFactory.getConfigDataHolder(delagate.getAppName()).getData(dataId);
             if (!TStringUtil.isEmpty(result)) {
