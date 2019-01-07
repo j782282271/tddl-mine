@@ -28,11 +28,14 @@ public class TGroupStatement implements TStatement {
     private final String appName;
     protected TGroupConnection tGroupConnection;
     protected TGroupDataSource tGroupDataSource;
+    //dbSelector重试使用
     protected int retryingTimes;
     /**
      * query time out . 超时时间，如果超时时间不为0。那么超时应该被set到真正的query中。
      */
     protected int queryTimeout = 0;
+    //https://blog.csdn.net/hantiannan/article/details/4509167
+    //https://blog.csdn.net/seven_3306/article/details/9303979
     protected int fetchSize;
     protected int maxRows;
     /**
@@ -43,38 +46,27 @@ public class TGroupStatement implements TStatement {
      * 更新计数，如果执行了多次，那么这个值只会返回最后一次执行的结果。 如果是一个query，那么返回的数据应该是-1
      */
     protected int updateCount;
+    //以下三个参数参见：https://www.cnblogs.com/firstdream/p/7837943.html
     protected int resultSetType = ResultSet.TYPE_FORWARD_ONLY;
     protected int resultSetConcurrency = ResultSet.CONCUR_READ_ONLY;
     // jdbc规范中未指明resultSetHoldability的默认值，要设成ResultSet.CLOSE_CURSORS_AT_COMMIT吗?
-    // TODO 统一设成-1吗?
     protected int resultSetHoldability = -1;
-    ;
-    /**
-     * sql元信息持有
-     */
+
     protected SqlMetaData sqlMetaData = null;
-    /*
-     * ========================================================================
-     * executeBatch
-     * ======================================================================
-     */
+
     protected List<String> batchedArgs;
-    /*
-     * ========================================================================
-     * 关闭逻辑
-     * ======================================================================
-     */
-    protected boolean closed; // 当前statment 是否是关闭的
+
+    // 当前statment 是否是关闭的
+    protected boolean closed;
     /**
      * 貌似是只有存储过程中会出现多结果集 因此不支持
      */
     protected boolean moreResults;
-    /*
-     * ========================================================================
+    /**
      * 下层(有可能不是真正的)Statement的持有，getter/setter包权限
-     * ======================================================================
      */
     private Statement baseStatement;
+
     protected DataSourceTryer<ResultSet> executeQueryTryer = new AbstractDataSourceTryer<ResultSet>() {
 
         @Override
@@ -510,10 +502,8 @@ public class TGroupStatement implements TStatement {
         this.baseStatement.cancel();
     }
 
-    /*
-     * ========================================================================
+    /**
      * 以下为不支持的方法
-     * ======================================================================
      */
     @Override
     public int getFetchDirection() throws SQLException {
