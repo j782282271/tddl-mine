@@ -71,7 +71,7 @@ public class TGroupDataSource extends AbstractLifecycle implements IDataSource, 
     private String fullDbGroupKey = null;                                  // dataId
     private int retryingTimes = 3;                                     // 默认读写失败时重试3次
     private long configReceiveTimeout = TddlConstants.DIAMOND_GET_DATA_TIMEOUT; // 取配置信息的默认超时时间为30秒
-    // 当运行期间主备发生切换时是否需要查找第一个可写的库
+    // 当运行期间主备发生切换时是否需要查找第一个可写的库，主备切换后readDBSelectorWrapper中可能含有可写ds,writeDBSelectorWrapper中可能含有可读ds
     private boolean autoSelectWriteDataSource = false;
     // 下面两个字段当建立实际的DataSource时必须传递过去
     // jdbc规范: DataSource刚建立时LogWriter为null

@@ -50,19 +50,25 @@ public class GroupConfigManager extends AbstractLifecycle implements Lifecycle {
 
     private static final Logger logger = LoggerFactory.getLogger(GroupConfigManager.class);
 
+    //配置变化改变dataSourceWrapperMap、DBSelector
     private final ConfigDataListener configReceiver;                                                           // //动态接收Diamond推送过来的信息
-    // add by junyu
+    // add by extra改变通知GroupExtraConfig变化
     private final ConfigDataListener extraGroupConfigReceiver;
     private final TGroupDataSource tGroupDataSource;
+
     private ConfigDataHandlerFactory configFactory;
     private ConfigDataHandler globalHandler;
     private ConfigDataHandler extraHandler;
     private ConfigDataHandlerFactory extraFactory;
+
+    //外部传过来List<DataSourceWrapper>,即依赖外部的ds，则不允许内部创建ds，createTAtomDataSource=false
     private boolean createTAtomDataSource = true;
 
     private Map<String/* Atom dbIndex */, DataSourceWrapper/* Wrapper过的Atom DS */> dataSourceWrapperMap = new HashMap<String, DataSourceWrapper>();
 
+    //存储一些sql、table与数据源的指定关系
     private volatile GroupExtraConfig groupExtraConfig = new GroupExtraConfig();
+    //ds变化通知，上面的listener是配置变化通知
     private DataSourceChangeListener dataSourceChangeListener;
     /**
      * 不能在TGroupDataSource或TGroupConnection或其他地方把DBSelector做为一个字段保存下来，
@@ -70,6 +76,7 @@ public class GroupConfigManager extends AbstractLifecycle implements Lifecycle {
      */
     private volatile DBSelector readDBSelectorWrapper;
     private volatile DBSelector writeDBSelectorWrapper;
+    //防止例如：某个ds在readDBSelectorWrapper，变为可写的，无法在writeDBSelectorWrapper中获得
     private volatile DBSelector runtimeWritableAtomDBSelectorWrapper;
 
     public GroupConfigManager(TGroupDataSource tGroupDataSource) {
@@ -245,6 +252,7 @@ public class GroupConfigManager extends AbstractLifecycle implements Lifecycle {
         if ((dataSourceWrappers == null) || dataSourceWrappers.size() < 1) {
             throw new TddlException(ErrorCode.ERR_CONFIG, "dataSourceWrappers is empty");
         }
+        //外部传入的ldataSourceWrappers list，则不允许内部创建datasource，防止引用不同
         createTAtomDataSource = false;
         // update(createDBSelectors2(dataSourceWrappers));
         resetByDataSourceWrapper(dataSourceWrappers);
@@ -542,7 +550,7 @@ public class GroupConfigManager extends AbstractLifecycle implements Lifecycle {
      */
     public DBSelector getDBSelector(boolean isRead, boolean autoSelectWriteDataSource) {
         DBSelector dbSelector = isRead ? readDBSelectorWrapper : writeDBSelectorWrapper;
-        if (!isRead && autoSelectWriteDataSource) {
+        if (!isRead && autoSelectWriteDataSource) {//选择可写db，在writeDBSelectorWrapper中可能不含可写ds,readDBSelectorWrapper中可能含有可写ds，因为运行期间改变了配置
             // 因为所有dbSelector内部的TAtomDataSource都是指向同一个实例，如果某一个TAtomDataSource的状态改了，
             // 那么所有包含这个TAtomDataSource的dbSelector都会知道状态改变了，
             // 所以只要有一个TAtomDataSource的状态变成W，

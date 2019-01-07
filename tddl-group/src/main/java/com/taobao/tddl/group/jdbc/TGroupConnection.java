@@ -155,11 +155,11 @@ public class TGroupConnection implements IConnection {
                 }
             }
 
-            if (isRead) {
+            if (isRead) {//要创建的读conn与原有读conn不同，则关闭原有conn，后续创建新conn
                 if (rBaseDsWrapper != null && !rBaseDsWrapper.isMatchDataSourceIndex(dataSourceIndex.index)) {
                     closeReadConnection();
                 }
-            } else {
+            } else {//要创建的写conn与原有写conn不同，则关闭原有conn，后续创建新conn
                 if (wBaseDsWrapper != null && !wBaseDsWrapper.isMatchDataSourceIndex(dataSourceIndex.index)) {
                     closeWriteConnection();
                 }
@@ -171,7 +171,7 @@ public class TGroupConnection implements IConnection {
             // 只要有写连接，并且对应的库可读，则复用。否则返回读连接
             return wBaseConnection != null && wBaseDsWrapper.hasReadWeight() ? wBaseConnection : rBaseConnection;
             // 先写后读，重用写连接读后，rBaseConnection仍然是null
-        } else {//外部控制commit
+        } else {//外部控制commit或者写查询
             if (wBaseConnection != null) {
                 this.tGroupDataSource.setWriteTarget(wBaseDsWrapper);
                 return wBaseConnection;
@@ -195,6 +195,7 @@ public class TGroupConnection implements IConnection {
     /**
      * 从实际的DataSource获得一个下层（有可能不是真实的）Connection
      * 包权限：此方法只在TGroupStatement、TGroupPreparedStatement中使用
+     * DBSelector.tryExe调用此方法，将其含有的dataSourceWrapper传进来，DBSelector中的dataSourceWrapper初始化的时候放进其Map中的
      */
     Connection createNewConnection(DataSourceWrapper dsw, boolean isRead) throws SQLException {
         // 这个方法只发生在第一次建立读/写连接的时候，以后都是复用了

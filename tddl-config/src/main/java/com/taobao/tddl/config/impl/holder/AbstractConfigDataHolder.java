@@ -9,6 +9,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 缓存配置到内存
+ * */
 public abstract class AbstractConfigDataHolder extends AbstractLifecycle implements ConfigDataHolder {
 
     protected Map<String, String> configHouse = new HashMap<String, String>();
