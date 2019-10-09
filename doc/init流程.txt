@@ -1,42 +1,39 @@
 
-一）初始化流程：
-0）获取配置的基础组件：ConfigDataHandlerCity根据appName获取UnitConfigDataHandlerFactory。
-UnitConfigDataHandlerFactory.getConfigDataHandler 创建PreheatDataHandler，它代理了apolloDataHandler、DiamondDataHandler
-PreheatDataHandler.getData()获取配置
+一）初始化流程：获取配置
+    0）获取配置的基础组件：
+        0.1）ConfigDataHandlerCity根据appName获取UnitConfigDataHandlerFactory。
+            UnitConfigDataHandlerFactory.getConfigDataHandler 创建PreheatDataHandler，它代理了apolloDataHandler、DiamondDataHandler
+            PreheatDataHandler.getData()获取配置
 
-ConfigDataHandlerCity获取ConfigDataHandlerFactory
-ConfigDataHandlerFactory获取ConfigDataHandler
-ConfigDataHandler获取配置
+        0.2）ConfigDataHandlerCity获取ConfigDataHandlerFactory
+            ConfigDataHandlerFactory获取ConfigDataHandler
+            ConfigDataHandler获取配置
 
+        0.3）ConfigHolderFactory获取ConfigDataHolder，ConfigDataHolder在内存中缓存了配置
+            0.3.1）MatrixConfigHolder中才会向ConfigHolderFactory放入ConfigDataHolder
+            0.3.2）仅仅PreheatDataHandler用到了ConfigDataHolder，即从缓存中获取配置
+            根据0.1）、0.2）即只有Matrix相关配置才会用put进入缓存，然后在PreheatDataHandler中使用缓存
 
-ConfigHolderFactory获取ConfigDataHolder，ConfigDataHolder在内存中缓存了配置
-0.1）MatrixConfigHolder中才会向ConfigHolderFactory放入ConfigDataHolder
-0.2）仅仅PreheatDataHandler用到了ConfigDataHolder，即从缓存中获取配置
-根据0.1）、0.2）即只有Matrix相关配置才会用put进入缓存，然后在PreheatDataHandler中使用缓存
+    1）初始化流程：TGroupDataSource与GroupConfigManager
+        TGroupDataSource.init()->GroupConfigManager.init()-->doInit():
+        doinit()根据（0）产生的Handler获取以下配置：com.taobao.tddl.jdbc.group_V2.4.1_tgou_wms：wms_m1:r2w10,wms_s1:r10w0,wms_s2:r10w0
+        parse()方法根据以上信息解析datasource。其中调用MyDataSourceFetcher.getDataSource()方法，该方法调用initAtomDataSource()方法，其中使用ExtensionLoader循环加载所有的TAtomDataSource连接信息
+        将TAtomDataSource包装为DataSourceWrapper，保存到GroupConfigManager.dataSourceWrapperMap中。
+        根据这些DataSourceWrapper,创建GroupConfigManager的两个字段：readDBSelectorWrapper、writeDBSelectorWrapper
 
-1）TGroupDataSource与GroupConfigManager
-TGroupDataSource.init()->GroupConfigManager.init()-->doInit():
-doinit()根据（0）产生的Handler获取以下配置：
-com.taobao.tddl.jdbc.group_V2.4.1_tgou_wms：wms_m1:r2w10,wms_s1:r10w0,wms_s2:r10w0
-parse()方法根据以上信息解析datasource。其中调用MyDataSourceFetcher.getDataSource()方法，该方法调用initAtomDataSource()方法，其中使用ExtensionLoader循环加载所有的TAtomDataSource连接信息
-将TAtomDataSource包装为DataSourceWrapper，保存到GroupConfigManager.dataSourceWrapperMap中。
-根据这些DataSourceWrapper,创建GroupConfigManager的两个字段：readDBSelectorWrapper、writeDBSelectorWrapper
-
-2）TAtomDataSource与TAtomDsConfHandle   注意仅仅是一个datasource的信息，master或者slave
-TAtomDataSource.init()将appName, dsKey（wms_m1:r2w10）传给TAtomDsConfHandle，调用TAtomDsConfHandle.init()
-其中根据（0）产生的Handler获取以下配置，获取以下配置信息：
-com.taobao.tddl.atom.global.wms_m1-->port=3306 dbName=wms dbStatus=RW dbType=mysql ip=10.10.5.11
-com.taobao.tddl.atom.app.wms.wms_m1-->userName=tiangou minPoolSize=1 maxPoolSize=100 connectionProperties=autoReconnect=true;connectionInitSql=set names utf8mb4;
-com.taobao.tddl.atom.passwd.wms.mysql.tiangou-->tiangou123
-将以上信息存到TAtomDsConfDO对象中,TAtomDsConfHandle.convertTAtomDsConf2DruidConf()方法根据TAtomDsConfDO对象创建：
-DruidDataSource对象，将该对象保存到TAtomDsConfHandle的字段中
-TAtomDataSource static cacheConfHandleMap,中保存了TAtomDsConfHandle
-
-
+    2）初始化流程：TAtomDataSource与TAtomDsConfHandle   注意仅仅是一个datasource的信息，master或者slave
+        TAtomDataSource.init()将appName, dsKey（wms_m1:r2w10）传给TAtomDsConfHandle，调用TAtomDsConfHandle.init()
+        通过AtomConfigManager（包装了app与global的获取过程），根据（0）产生的Handler获取以下配置，获取以下配置信息：
+        com.taobao.tddl.atom.global.wms_m1=====>port=3306 dbName=wms dbStatus=RW dbType=mysql ip=10.10.5.11
+        com.taobao.tddl.atom.app.wms.wms_m1=====>userName=tiangou minPoolSize=1 maxPoolSize=100 connectionProperties=autoReconnect=true;connectionInitSql=set names utf8mb4;
+        com.taobao.tddl.atom.passwd.wms.mysql.tiangou=====>tiangou123
+        将以上信息存到TAtomDsConfDO对象中,TAtomDsConfHandle.convertTAtomDsConf2DruidConf()方法根据TAtomDsConfDO对象创建：DruidDataSource对象
+        将该对象保存到TAtomDsConfHandle的字段druidDataSource中
+        TAtomDataSource static cacheConfHandleMap,中保存了TAtomDsConfHandle
 
 
 二）使用dataSource流程：
-0）以上创建了TGroupDataSource作为mybatis的数据源，它实现了DataSource，需要实现getConnection方法，因此从TGroupDataSource的getConnection开始入手看获取datasource流程
+1）以上创建了TGroupDataSource作为mybatis的数据源，它实现了DataSource，需要实现getConnection方法，因此从TGroupDataSource的getConnection开始入手看获取datasource流程
 TGroupDataSource.getConnection()只有一行：return new TGroupConnection(this)，它返回TGroupConnection。
 2）再看看TGroupConnection继承自jdbc的Connection，主要方法prepareStatement。so看看TGroupConnection的这个方法干了什么：
 其中创建了new TGroupPreparedStatement(tGroupDataSource,this,sql,this.tGroupDataSource.getAppName());

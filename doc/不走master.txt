@@ -1,0 +1,32 @@
+class  A{
+   B b;
+   
+   public void do(){
+       this.masterDoDo();
+   }
+
+   public void masterDoDo(){
+   
+   }
+   
+   public void doBB(){
+       b.masterDoDo();
+   }
+}
+
+
+
+调用a.do();是不会走master的，因为spring的aop是不会包在masterDoDo()上的，因为在同一类的另一个方法中调用
+调用a.doBB();会走master，因为a方法调用b方法的masterDoDo(),b方法是可以报上aop的
+
+文章：https://blog.csdn.net/zyf_balance/article/details/79221871
+aop原理解释：
+class delgateA{
+   A a;
+   public do(){
+      //aop do 
+      a.do();//这里执行a.do()进入之后其中执行this.masterDoDo()，还是a.masterDoDo()方法，该方法不会再包aop了
+      //aop do 
+   }
+   
+}
